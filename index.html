@@ -1,159 +1,236 @@
 <!DOCTYPE html>
 <html lang="ja">
-<head><link rel="manifest" href="manifest.json">
+<head>
+    <link rel="manifest" href="manifest.json">
+    <meta charset="UTF-8">
+    <title>幻想時計 - 流星とシャボン玉</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <style>
+        body {
+            margin: 0;
+            font-family: 'Segoe UI', sans-serif;
+            background-color: #000;
+            overflow: hidden;
+            height: 100vh;
+        }
 
-  <meta charset="UTF-8">
-  <title>星だけ幻想時計</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <style>
-    body {
-      margin: 0;
-      font-family: 'Segoe UI', sans-serif;
-      background-color: #000;
-      overflow: hidden;
-      height: 100vh;
-    }
+        canvas#sceneCanvas { /* ID名を変更 */
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            z-index: 0;
+        }
 
-    canvas#aquarium {
-      position: absolute;
-      top: 0; left: 0;
-      width: 100%; height: 100%;
-      z-index: 0;
-    }
+        #rainbow {
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            opacity: 0.2; /* 不透明度を調整 */
+            backdrop-filter: blur(10px);
+            transition: background 3s ease-in-out; /* 変化を滑らかに */
+            z-index: 1;
+        }
 
-    #rainbow {
-      position: absolute;
-      top: 0; left: 0;
-      width: 100%; height: 100%;
-      opacity: 0.25;
-      backdrop-filter: blur(12px);
-      transition: background 2s;
-      z-index: 1;
-    }
+        #clock {
+            position: absolute;
+            top: 50%; /* 中央に移動 */
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 999;
+            font-size: 4.5em; /* フォントサイズを大きく */
+            font-weight: 300;
+            color: white;
+            text-shadow: 0 0 20px rgba(255,255,255,0.9), 0 0 40px rgba(255,255,255,0.4);
+            backdrop-filter: blur(1px); /* 時計部分のブラーは控えめに */
+            letter-spacing: 0.05em;
+        }
 
-    #clock {
-      position: absolute;
-      top: 20vh;
-      left: 50%;
-      transform: translateX(-50%);
-      z-index: 999;
-      font-size: 3.5em;
-      color: white;
-      text-shadow: 0 0 15px rgba(255,255,255,0.6);
-      backdrop-filter: blur(5px);
-    }
-
-    #sand {
-      position: relative;
-      width: 100px;
-      height: 150px;
-      border: 2px solid rgba(255,255,255,0.3);
-      border-radius: 12px;
-      margin: 2em auto;
-      overflow: hidden;
-      background: rgba(255,255,255,0.05);
-      box-shadow: 0 0 20px rgba(255,255,255,0.2);
-      z-index: 2;
-    }
-
-    .grain {
-      position: absolute;
-      width: 4px;
-      height: 4px;
-      background: white;
-      border-radius: 50%;
-      animation: fall 5s linear forwards;
-    }
-
-    @keyframes fall {
-      0% { top: 0; opacity: 1; }
-      100% { top: 140px; opacity: 0; }
-    }
-  </style>
+        /* 砂時計アニメーションは要求された流星とシャボン玉に置き換わるため削除しましたが、
+           もし残したい場合は元のCSSとJSを復活させてください。 */
+    </style>
 </head>
 <body>
-  <canvas id="aquarium"></canvas>
-  <div id="rainbow"></div>
-  <div id="clock">--:--:--</div>
-  <div id="sand"></div>
+    <canvas id="sceneCanvas"></canvas>
+    <div id="rainbow"></div>
+    <div id="clock">--:--:--</div>
 
-  <script>
-    // 時計更新（ローカル時間）
-    function updateClock() {
-      const now = new Date();
-      const h = String(now.getHours()).padStart(2, '0');
-      const m = String(now.getMinutes()).padStart(2, '0');
-      const s = String(now.getSeconds()).padStart(2, '0');
-      document.getElementById("clock").textContent = `${h}:${m}:${s}`;
-    }
-    setInterval(updateClock, 1000);
-    updateClock();
+    <script>
+        // --- 1. 時計更新（ローカル時間） ---------------------------------
+        function updateClock() {
+            // Local time is inherently accurate and doesn't "deviate"
+            const now = new Date();
+            const h = String(now.getHours()).padStart(2, '0');
+            const m = String(now.getMinutes()).padStart(2, '0');
+            const s = String(now.getSeconds()).padStart(2, '0');
+            document.getElementById("clock").textContent = `${h}:${m}:${s}`;
+        }
+        setInterval(updateClock, 1000);
+        updateClock();
 
-    // 七色背景（15秒ごとに変化）
-    const gradients = [
-      "linear-gradient(135deg, rgba(255,0,0,0.3), rgba(255,100,100,0.2))",
-      "linear-gradient(135deg, rgba(255,165,0,0.3), rgba(255,200,100,0.2))",
-      "linear-gradient(135deg, rgba(255,255,0,0.3), rgba(255,255,150,0.2))",
-      "linear-gradient(135deg, rgba(0,128,0,0.3), rgba(100,200,100,0.2))",
-      "linear-gradient(135deg, rgba(0,0,255,0.3), rgba(100,100,255,0.2))",
-      "linear-gradient(135deg, rgba(75,0,130,0.3), rgba(150,100,200,0.2))",
-      "linear-gradient(135deg, rgba(238,130,238,0.3), rgba(255,200,255,0.2))"
-    ];
-    let index = 0;
-    setInterval(() => {
-      document.getElementById("rainbow").style.background = gradients[index];
-      index = (index + 1) % gradients.length;
-    }, 15000);
+        // --- 2. 七色背景 ------------------------------------------------
+        const rainbowDiv = document.getElementById("rainbow");
+        const gradients = [
+            "linear-gradient(135deg, rgba(255,0,0,0.3), rgba(255,100,100,0.2))",
+            "linear-gradient(135deg, rgba(255,165,0,0.3), rgba(255,200,100,0.2))",
+            "linear-gradient(135deg, rgba(255,255,0,0.3), rgba(255,255,150,0.2))",
+            "linear-gradient(135deg, rgba(0,128,0,0.3), rgba(100,200,100,0.2))",
+            "linear-gradient(135deg, rgba(0,0,255,0.3), rgba(100,100,255,0.2))",
+            "linear-gradient(135deg, rgba(75,0,130,0.3), rgba(150,100,200,0.2))",
+            "linear-gradient(135deg, rgba(238,130,238,0.3), rgba(255,200,255,0.2))"
+        ];
+        let gradientIndex = 0;
+        setInterval(() => {
+            rainbowDiv.style.background = gradients[gradientIndex];
+            gradientIndex = (gradientIndex + 1) % gradients.length;
+        }, 15000);
 
-    // 砂時計アニメーション
-    const sand = document.getElementById("sand");
-    function dropSand() {
-      const grain = document.createElement("div");
-      grain.className = "grain";
-      grain.style.left = `${Math.random() * 90}px`;
-      sand.appendChild(grain);
-      setTimeout(() => sand.removeChild(grain), 5000);
-    }
-    setInterval(dropSand, 300);
+        // --- 3. Canvas初期設定とリサイズ ---------------------------------
+        const canvas = document.getElementById("sceneCanvas");
+        const ctx = canvas.getContext("2d");
+        let width, height;
 
-    // canvas描画（星だけ）
-    const canvas = document.getElementById("aquarium");
-    const ctx = canvas.getContext("2d");
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
+        function resizeCanvas() {
+            width = window.innerWidth;
+            height = window.innerHeight;
+            canvas.width = width;
+            canvas.height = height;
+        }
 
-    let stars = [];
-    for (let i = 0; i < 100; i++) {
-      stars.push({
-        x: Math.random() * canvas.width,
-        y: Math.random() * canvas.height,
-        r: Math.random() * 2 + 1
-      });
-    }
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
 
-    const starColors = ["#ffffff", "#aeefff", "#ddaaff", "#ff99cc", "#ffff99"];
-    let starIndex = 0;
-    setInterval(() => {
-      starIndex = (starIndex + 1) % starColors.length;
-    }, 5000);
+        // --- 4. 星オブジェクトの作成 --------------------------------------
+        let stars = [];
+        const STAR_COUNT = 100;
+        for (let i = 0; i < STAR_COUNT; i++) {
+            stars.push({
+                x: Math.random() * width,
+                y: Math.random() * height,
+                r: Math.random() * 2 + 1,
+                alpha: Math.random() // きらめき用
+            });
+        }
+        
+        // --- 5. 流星（Meteors）オブジェクトの作成 --------------------------
+        let meteors = [];
+        const METEOR_COUNT = 5;
+        class Meteor {
+            constructor() {
+                this.reset();
+            }
+            reset() {
+                // 画面外左上から出現
+                this.x = Math.random() * width * 0.2 - width * 0.5; 
+                this.y = Math.random() * height * 0.2 - height * 0.5;
+                this.len = Math.random() * 150 + 50; // 尾の長さ
+                this.speed = Math.random() * 2 + 1;
+                this.angle = Math.PI / 4 + (Math.random() * 0.1 - 0.05); // 45度付近
+            }
+            update() {
+                this.x += Math.cos(this.angle) * this.speed;
+                this.y += Math.sin(this.angle) * this.speed;
+                // 画面外に出たらリセット
+                if (this.x > width * 1.5 || this.y > height * 1.5) { 
+                    this.reset();
+                }
+            }
+            draw() {
+                const gradient = ctx.createLinearGradient(this.x, this.y, this.x - Math.cos(this.angle) * this.len, this.y - Math.sin(this.angle) * this.len);
+                gradient.addColorStop(0, 'rgba(255, 255, 255, 1)'); // 頭
+                gradient.addColorStop(1, 'rgba(255, 255, 255, 0)'); // 尾
 
-    function drawStars() {
-      for (let s of stars) {
-        ctx.beginPath();
-        ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
-        ctx.fillStyle = starColors[starIndex];
-        ctx.shadowColor = starColors[starIndex];
-        ctx.shadowBlur = 10;
-        ctx.fill();
-      }
-    }
+                ctx.strokeStyle = gradient;
+                ctx.lineWidth = 1.5;
+                ctx.beginPath();
+                ctx.moveTo(this.x, this.y);
+                ctx.lineTo(this.x - Math.cos(this.angle) * this.len, this.y - Math.sin(this.angle) * this.len);
+                ctx.stroke();
+            }
+        }
+        for (let i = 0; i < METEOR_COUNT; i++) {
+            meteors.push(new Meteor());
+        }
 
-    function animate() {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      drawStars();
-      requestAnimationFrame(animate);
-    }
-    animate();
-  </script>
+        // --- 6. シャボン玉（Bubbles）オブジェクトの作成 -----------------------
+        let bubbles = [];
+        const BUBBLE_COUNT = 15;
+        class Bubble {
+            constructor() {
+                this.reset();
+            }
+            reset() {
+                this.x = Math.random() * width;
+                this.y = height + Math.random() * height * 0.5; // 画面下部から出現
+                this.r = Math.random() * 10 + 5; // 半径 5px〜15px
+                this.speed = Math.random() * 0.5 + 0.2; // 上昇速度
+                this.waveOffset = Math.random() * Math.PI * 2; // 左右の揺れの位相
+            }
+            update() {
+                this.y -= this.speed;
+                // 左右に揺れる動きを加える
+                this.x += Math.sin((this.y * 0.01) + this.waveOffset) * 0.5; 
+                if (this.y < -this.r) {
+                    this.reset(); // 画面上部から消えたらリセット
+                }
+            }
+            draw() {
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.r, 0, Math.PI * 2);
+
+                // シャボン玉のグラデーション（虹色と透明感）
+                const gradient = ctx.createRadialGradient(this.x + this.r / 3, this.y - this.r / 3, 0, this.x, this.y, this.r);
+                gradient.addColorStop(0, 'rgba(255, 255, 255, 0.4)'); // ハイライト
+                gradient.addColorStop(0.7, 'rgba(173, 216, 230, 0.2)'); // 淡い青
+                gradient.addColorStop(1, 'rgba(255, 192, 203, 0.1)'); // 淡いピンク
+
+                ctx.fillStyle = gradient;
+                ctx.fill();
+                
+                // 輪郭線
+                ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+                ctx.lineWidth = 1;
+                ctx.stroke();
+            }
+        }
+        for (let i = 0; i < BUBBLE_COUNT; i++) {
+            bubbles.push(new Bubble());
+        }
+
+        // --- 7. メインアニメーションループ ---------------------------------
+        function animate() {
+            // 前のフレームを消去
+            ctx.clearRect(0, 0, width, height); 
+
+            // 星の描画とチカチカアニメーション
+            for (let s of stars) {
+                // 透明度を時間で変動させてチカチカさせる
+                s.alpha = (Math.sin(Date.now() * 0.005 + s.x) * 0.5 + 0.5) * 0.5 + 0.5; 
+                ctx.fillStyle = `rgba(255, 255, 255, ${s.alpha})`;
+                ctx.shadowColor = 'white';
+                ctx.shadowBlur = 5 * s.alpha; // 輝きも連動させる
+                
+                ctx.beginPath();
+                ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            
+            // 流星の描画と更新
+            ctx.shadowBlur = 0; // 流星描画中はシャドウをオフ
+            for (let m of meteors) {
+                m.update();
+                m.draw();
+            }
+
+            // シャボン玉の描画と更新
+            for (let b of bubbles) {
+                b.update();
+                b.draw();
+            }
+
+            // 次のフレームを要求
+            requestAnimationFrame(animate);
+        }
+        animate();
+    </script>
 </body>
 </html>
